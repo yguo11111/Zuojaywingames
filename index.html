@@ -1,135 +1,160 @@
 <!DOCTYPE html>
-<html lang="zh-Hant">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>聊天室與搖桿功能</title>
+    <title>Chat Application</title>
     <style>
         body {
             font-family: Arial, sans-serif;
+            background-color: #f0f8ff;
+            color: #333;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
             margin: 0;
-            padding: 20px;
-            background-color: #f0f0f0;
+            padding: 0;
         }
-        #chat-container {
-            border: 1px solid #ccc;
+        header {
+            background-color: #4CAF50;
+            color: white;
             padding: 10px;
-            margin-bottom: 20px;
-            background: white;
-            height: 300px;
+            text-align: center;
+            width: 100%;
+        }
+        .container {
+            width: 100%;
+            max-width: 600px;
+            margin: 20px;
+            display: flex;
+            flex-direction: column;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            background-color: white;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+        .user-input {
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            margin: 10px;
+        }
+        .chat-area {
+            flex: 1;
+            padding: 10px;
             overflow-y: auto;
+            border-top: 1px solid #4CAF50;
+            border-bottom: 1px solid #4CAF50;
+            height: 300px;
         }
         .message {
             margin: 5px 0;
+            padding: 10px;
+            border-radius: 10px;
+            animation: fadeIn 0.5s;
         }
-        .sent {
-            text-align: right;
+        .message-user {
+            background-color: #4CAF50;
+            color: white;
+            align-self: flex-end;
         }
-        #joystick {
-            position: relative;
-            width: 200px;
-            height: 200px;
-            background-color: rgba(255, 255, 255, 0.8);
-            border: 2px solid #555;
-            border-radius: 50%;
-            overflow: hidden;
+        .message-other {
+            background-color: #eee;
+            color: black;
+            align-self: flex-start;
         }
-        #stick {
-            position: absolute;
-            width: 80px;
-            height: 80px;
-            background-color: rgba(255, 0, 0, 0.7);
-            border-radius: 50%;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            touch-action: none;
+        .input-area {
+            display: flex;
+            margin: 10px;
+        }
+        .message-input {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            margin-right: 10px;
+        }
+        .send-button {
+            padding: 10px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        .send-button:hover {
+            background-color: #45a049;
+        }
+        .user-count {
+            text-align: center;
+            margin: 10px 0;
+        }
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        @media (max-width: 600px) {
+            .container {
+                width: 100%;
+                margin: 0;
+            }
+            .user-input, .message-input {
+                font-size: 12px;
+            }
         }
     </style>
 </head>
 <body>
-    <h1>聊天室功能</h1>
-    <div id="chat-container">
-        <div id="messages"></div>
+    <header>
+        <h1 id="greeting">Welcome to the Chat!</h1>
+    </header>
+    <div class="container">
+        <input type="text" id="userName" class="user-input" placeholder="Enter your name" />
+        <div class="user-count" id="userCount">Users in chat: 0</div>
+        <div class="chat-area" id="chatArea"></div>
+        <div class="input-area">
+            <input type="text" id="messageInput" class="message-input" placeholder="Type your message..." />
+            <button class="send-button" id="sendButton">Send</button>
+        </div>
     </div>
-    <input type="text" id="message-input" placeholder="輸入訊息..." />
-    <button id="send-button">發送</button>
-
-    <h1>手機搖桿功能</h1>
-    <div id="joystick">
-        <div id="stick"></div>
-    </div>
-
     <script>
-        // 聊天室功能
-        const messagesDiv = document.getElementById('messages');
-        const messageInput = document.getElementById('message-input');
-        const sendButton = document.getElementById('send-button');
+        const userNameInput = document.getElementById('userName');
+        const chatArea = document.getElementById('chatArea');
+        const messageInput = document.getElementById('messageInput');
+        const sendButton = document.getElementById('sendButton');
+        const userCountDisplay = document.getElementById('userCount');
+        const greeting = document.getElementById('greeting');
 
-        sendButton.addEventListener('click', sendMessage);
+        let users = new Set();
 
-        function sendMessage() {
+        userNameInput.addEventListener('change', () => {
+            const name = userNameInput.value.trim();
+            if (name) {
+                users.add(name);
+                userCountDisplay.innerText = `Users in chat: ${users.size}`;
+                greeting.innerText = `Welcome to the Chat, ${name}!`;
+            }
+        });
+
+        sendButton.addEventListener('click', () => {
             const messageText = messageInput.value.trim();
-            if (messageText) {
-                displayMessage(messageText, 'sent');
+            const userName = userNameInput.value.trim();
+            if (messageText && userName) {
+                const messageElement = document.createElement('div');
+                messageElement.classList.add('message', 'message-user');
+                messageElement.textContent = `${userName}: ${messageText}`;
+                chatArea.appendChild(messageElement);
                 messageInput.value = '';
-                setTimeout(() => {
-                    displayMessage(`回聲: ${messageText}`, 'received');
-                }, 500);
-            }
-        }
-
-        function displayMessage(text, type) {
-            const messageDiv = document.createElement('div');
-            messageDiv.className = `message ${type}`;
-            messageDiv.textContent = text;
-            messagesDiv.appendChild(messageDiv);
-            messagesDiv.scrollTop = messagesDiv.scrollHeight;
-        }
-
-        // 搖桿功能
-        const joystick = document.getElementById('joystick');
-        const stick = document.getElementById('stick');
-        let isMoving = false;
-
-        joystick.addEventListener('touchstart', (event) => {
-            isMoving = true;
-            moveStick(event);
-        });
-
-        joystick.addEventListener('touchmove', (event) => {
-            if (isMoving) {
-                moveStick(event);
+                chatArea.scrollTop = chatArea.scrollHeight;
             }
         });
-
-        joystick.addEventListener('touchend', () => {
-            isMoving = false;
-            resetStick();
-        });
-
-        function moveStick(event) {
-            event.preventDefault();
-            const rect = joystick.getBoundingClientRect();
-            const touch = event.touches[0];
-            const x = touch.clientX - rect.left - stick.offsetWidth / 2;
-            const y = touch.clientY - rect.top - stick.offsetHeight / 2;
-            const radius = 80;
-            const distance = Math.sqrt(x * x + y * y);
-            if (distance > radius) {
-                const angle = Math.atan2(y, x);
-                stick.style.left = `${Math.cos(angle) * radius + 100}px`;
-                stick.style.top = `${Math.sin(angle) * radius + 100}px`;
-            } else {
-                stick.style.left = `${x + 100}px`;
-                stick.style.top = `${y + 100}px`;
-            }
-        }
-
-        function resetStick() {
-            stick.style.left = '50%';
-            stick.style.top = '50%';
-        }
     </script>
 </body>
 </html>
