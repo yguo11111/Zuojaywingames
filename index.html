@@ -155,6 +155,18 @@
                 chatArea.scrollTop = chatArea.scrollHeight;
             }
         });
+
+        // Simulate other users for demonstration
+        setInterval(() => {
+            if (users.size > 0) {
+                const randomUser = Array.from(users)[Math.floor(Math.random() * users.size)];
+                const messageElement = document.createElement('div');
+                messageElement.classList.add('message', 'message-other');
+                messageElement.textContent = `${randomUser}: This is a simulated message!`;
+                chatArea.appendChild(messageElement);
+                chatArea.scrollTop = chatArea.scrollHeight;
+            }
+        }, 3000);
     </script>
 </body>
 </html>
