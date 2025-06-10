@@ -1,0 +1,1721 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>鳴子射擊 - 純粹版</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/p5.js"></script>
+    <style>
+        /* CSS 樣式與之前版本基本相同，僅調整與圖像相關的可能部分 */
+        body {
+            margin: 0;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background-color: #222;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: #eee;
+        }
+        canvas {
+            display: block;
+            border: 2px solid #555;
+            background-color: #0a0a0a; /* 遊戲區域背景 */
+        }
+        #gameContainer {
+            position: relative;
+            width: 800px;
+            height: 600px;
+        }
+
+        #menuScreen, #gameOverScreen, #skillScreen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.85);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: #eee;
+            text-align: center;
+            z-index: 100;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        #menuScreen h1, #gameOverScreen h1, #skillScreen h2 {
+            color: #f0f;
+            text-shadow: 0 0 10px #f0f;
+            margin-bottom: 20px;
+        }
+
+        #menuScreen button, #gameOverScreen button, #skillScreen button.skill-btn {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            margin: 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1.1em;
+            transition: background-color 0.3s ease;
+        }
+        #menuScreen button:hover, #gameOverScreen button:hover, #skillScreen button.skill-btn:hover {
+            background-color: #0056b3;
+        }
+
+        #menuScreen input, #menuScreen select {
+            padding: 8px;
+            margin: 5px;
+            border-radius: 4px;
+            border: 1px solid #ccc;
+            width: 200px;
+            background-color: #333;
+            color: #eee;
+            font-size: 1em;
+        }
+
+        .control-group {
+            margin-bottom: 15px;
+        }
+        .control-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+
+        #gameUI {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: #eee;
+            font-size: 1.2em;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.7);
+            z-index: 5;
+            pointer-events: none;
+        }
+        #gameUI div { margin-bottom: 5px; }
+
+        #healthBarContainer, #ultimateBarContainer {
+            width: 200px;
+            height: 20px;
+            background-color: #555;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-top: 10px;
+            box-shadow: 0 0 5px rgba(0,0,0,0.5);
+        }
+        #ultimateBarContainer { height: 15px; margin-top: 5px; }
+
+        #healthBar {
+            height: 100%;
+            background-color: #4CAF50;
+            width: 100%;
+            transition: width 0.1s linear;
+        }
+        #ultimateBar {
+            height: 100%;
+            background-color: #9C27B0;
+            width: 0%;
+            transition: width 0.1s linear;
+        }
+
+        #ultimateButton {
+            pointer-events: auto; /* 確保按鈕可點擊 */
+            margin-top: 10px;
+            padding: 5px 10px;
+            font-size: 0.9em;
+            background-color: #dc3545 !important; /* 紅色 */
+        }
+        #ultimateButton:hover {
+            background-color: #c82333 !important;
+        }
+        #ultimateButton:disabled {
+            background-color: #6c757d !important;
+            cursor: not-allowed !important;
+        }
+
+        #gameEvents {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            width: 300px;
+            max-height: 150px;
+            overflow-y: auto;
+            background-color: rgba(0, 0, 0, 0.6);
+            padding: 10px;
+            border-radius: 8px;
+            font-size: 0.9em;
+            color: #ccc;
+            z-index: 5;
+            pointer-events: none;
+        }
+        .event-message {
+            margin-bottom: 5px;
+            opacity: 0;
+            animation: fadeInOut 5s forwards;
+        }
+        @keyframes fadeInOut {
+            0% { opacity: 0; transform: translateY(20px); }
+            10% { opacity: 1; transform: translateY(0); }
+            90% { opacity: 1; transform: translateY(0); }
+            100% { opacity: 0; transform: translateY(-20px); }
+        }
+
+        #highScoreList {
+            margin-top: 20px;
+            list-style: none;
+            padding: 0;
+            text-align: left;
+            width: 80%;
+            max-width: 400px;
+            background-color: rgba(0, 0, 0, 0.5);
+            padding: 15px;
+            border-radius: 8px;
+        }
+        #highScoreList li {
+            padding: 5px 0;
+            border-bottom: 1px dashed #555;
+            display: flex;
+            justify-content: space-between;
+        }
+        #highScoreList li:last-child { border-bottom: none; }
+
+        #skillScreen {
+            background-color: rgba(0, 0, 0, 0.9);
+            display: none;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        #skillScreen h2 { color: #0f0; margin-bottom: 20px; text-shadow: 0 0 8px #0f0;}
+        .skill-points-display { margin-bottom: 20px; font-size: 1.3em; color: #fff;}
+
+        #skillTreeContainer {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 20px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .skill-node {
+            background-color: #333;
+            border: 2px solid #555;
+            border-radius: 8px;
+            padding: 15px;
+            text-align: center;
+            box-shadow: 0 0 15px rgba(0,255,0,0.3);
+            transition: transform 0.2s ease-in-out;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+        .skill-node:hover {
+            transform: translateY(-5px);
+            border-color: #0f0;
+            box-shadow: 0 0 20px rgba(0,255,0,0.6);
+        }
+        .skill-node h3 { color: #0f0; margin-top: 0;}
+        .skill-node p { font-size: 0.9em; color: #bbb; flex-grow: 1; margin-bottom: 10px;}
+        .skill-node .level-display { font-size: 1.1em; font-weight: bold; color: #0ff; margin-bottom: 10px;}
+        .skill-node button {
+            background-color: #28a745;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-top: auto;
+            transition: background-color 0.3s ease;
+        }
+        .skill-node button:hover { background-color: #218838; }
+        .skill-node button:disabled {
+            background-color: #6c757d;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <div id="gameUI" style="display:none;">
+            <div>玩家: <span id="playerNameDisplay"></span></div>
+            <div>分數: <span id="scoreDisplay">0</span></div>
+            <div>擊殺: <span id="killsDisplay">0</span></div>
+            <div>時間: <span id="timeDisplay">0s</span></div>
+            <div>生命: <span id="healthDisplay">100</span> / <span id="maxHealthDisplay">100</span></div>
+            <div id="healthBarContainer"><div id="healthBar"></div></div>
+            <div>大招充能:</div>
+            <div id="ultimateBarContainer"><div id="ultimateBar"></div></div>
+            <button id="ultimateButton" onclick="useUltimate()">使用大招 (R)</button>
+        </div>
+
+        <div id="gameEvents" style="display:none;"></div>
+
+        <div id="menuScreen">
+            <h1>鳴子射擊 - 純粹版</h1>
+            <div class="control-group">
+                <label for="playerName">玩家名稱:</label>
+                <input type="text" id="playerName" value="玩家1">
+            </div>
+            <div class="control-group">
+                <label for="moveType">移動方式:</label>
+                <select id="moveType">
+                    <option value="keyboard">鍵盤控制 (W S A D)</option>
+                    <option value="mouse">滑鼠跟隨</option>
+                </select>
+            </div>
+            <div class="control-group">
+                <label for="bgEffect">背景特效:</label>
+                <select id="bgEffect">
+                    <option value="none">無</option>
+                    <option value="snow">雪花</option>
+                    <option value="rain">雨滴</option>
+                    <option value="leaves">落葉</option>
+                    <option value="sakura">櫻花</option>
+                    <option value="fireflies">螢火蟲</option>
+                </select>
+            </div>
+            <div class="control-group">
+                <label for="customEnemyName">自訂普通敵人名稱:</label>
+                <input type="text" id="customEnemyName" value="敵人">
+            </div>
+            <div class="control-group">
+                <label for="difficulty">難度:</label>
+                <select id="difficulty">
+                    <option value="easy">簡單</option>
+                    <option value="normal">普通</option>
+                    <option value="hard">困難</option>
+                </select>
+            </div>
+            <button onclick="startGame()">開始遊戲</button>
+        </div>
+
+        <div id="gameOverScreen" style="display:none;">
+            <h1>遊戲結束！</h1>
+            <p>你的分數: <span id="finalScore">0</span></p>
+            <p>你的擊殺數: <span id="finalKills">0</span></p>
+            <h3>高分榜</h3>
+            <ol id="highScoreList"></ol>
+            <button onclick="restartGame()">重新開始</button>
+        </div>
+
+        <div id="skillScreen" style="display:none;">
+            <h2>技能樹</h2>
+            <div class="skill-points-display">剩餘技能點: <span id="skillPoints">0</span></div>
+            <div id="skillTreeContainer">
+                <div class="skill-node">
+                    <h3>生命值強化</h3>
+                    <p>增加最大生命值。</p>
+                    <div class="level-display">等級: <span id="healthLevel">0</span></div>
+                    <button class="skill-btn" onclick="upgradeSkill('health')">升級 (消耗 1 點)</button>
+                </div>
+                <div class="skill-node">
+                    <h3>傷害強化</h3>
+                    <p>增加子彈傷害。</p>
+                    <div class="level-display">等級: <span id="damageLevel">0</span></div>
+                    <button class="skill-btn" onclick="upgradeSkill('damage')">升級 (消耗 1 點)</button>
+                </div>
+                <div class="skill-node">
+                    <h3>速度強化</h3>
+                    <p>增加玩家移動速度。</p>
+                    <div class="level-display">等級: <span id="speedLevel">0</span></div>
+                    <button class="skill-btn" onclick="upgradeSkill('speed')">升級 (消耗 1 點)</button>
+                </div>
+                <div class="skill-node">
+                    <h3>射速提升</h3>
+                    <p>減少射擊冷卻時間。</p>
+                    <div class="level-display">等級: <span id="fireRateLevel">0</span></div>
+                    <button class="skill-btn" onclick="upgradeSkill('fireRate')">升級 (消耗 1 點)</button>
+                </div>
+                <div class="skill-node">
+                    <h3>衝刺</h3>
+                    <p>短暫無敵並快速移動。</p>
+                    <div class="level-display">等級: <span id="dashLevel">0</span></div>
+                    <button class="skill-btn" onclick="upgradeSkill('dash')">升級 (消耗 2 點)</button>
+                </div>
+                <div class="skill-node">
+                    <h3>自動恢復</h3>
+                    <p>每隔一段時間恢復生命。</p>
+                    <div class="level-display">等級: <span id="regenLevel">0</span></div>
+                    <button class="skill-btn" onclick="upgradeSkill('regen')">升級 (消耗 2 點)</button>
+                </div>
+                <div class="skill-node">
+                    <h3>暴擊</h3>
+                    <p>機率造成額外傷害。</p>
+                    <div class="level-display">等級: <span id="critLevel">0</span></div>
+                    <button class="skill-btn" onclick="upgradeSkill('crit')">升級 (消耗 3 點)</button>
+                </div>
+                </div>
+            <button onclick="resumeGame()">返回遊戲</button>
+        </div>
+    </div>
+
+    <script type="text/javascript">
+        // --- 遊戲狀態變數 ---
+        let gameState = 'menu'; // 'menu', 'playing', 'paused', 'gameOver'
+        let gameCanvas;
+        let player;
+        let bullets = [];
+        let enemies = [];
+        let meleeEffects = [];
+        let pickups = []; // 道具
+        let score = 0;
+        let kills = 0;
+        let gameStartTime;
+        let lastEnemySpawnTime = 0;
+        let enemySpawnInterval = 1500; // 敵人生成間隔
+        let lastMeleeTime = 0;
+        let meleeCooldown = 500; // 近戰冷卻時間
+
+        // 玩家相關設定
+        let playerName = "玩家1";
+        let moveType = "keyboard"; // 'keyboard', 'mouse'
+        let customEnemyName = "敵人";
+        let difficulty = "normal"; // 'easy', 'normal', 'hard'
+
+        // 技能樹相關
+        let skillPoints = 0;
+        let healthLevel = 0;
+        let damageLevel = 0;
+        let speedLevel = 0;
+        let fireRateLevel = 0;
+        let dashLevel = 0;
+        let regenLevel = 0;
+        let critLevel = 0;
+
+        // Boss 相關
+        let bossSpawned = false;
+        let bossInstance = null;
+        let bossSpawnTime = 30000; // Boss 第一次出現時間 (30秒)
+        let nextBossTime = bossSpawnTime;
+
+        // 大招相關
+        let ultimateCharge = 0; // 大招能量
+        const ULTIMATE_MAX_CHARGE = 100;
+        const ULTIMATE_COST = 100; // 使用大招所需能量
+
+        // 背景特效 (將使用幾何圖形繪製)
+        let bgEffectType = 'none';
+        let particles = []; // 用於背景特效
+
+        // 高分榜
+        let highScores = [];
+        const MAX_HIGH_SCORES = 5;
+
+        // 鍵盤控制
+        let keys = {}; // 記錄按鍵狀態
+
+        // 遊戲時間管理 (用於 deltaTime)
+        let lastUpdateTime = 0;
+
+        // --- 類別定義 (Classes) ---
+
+        /**
+         * 粒子類別 (用於背景特效或爆炸效果)
+         * 完全使用 p5.js 繪圖
+         */
+        class Particle {
+            constructor(x, y, type) {
+                this.x = x;
+                this.y = y;
+                this.type = type;
+                this.lifespan = 255; // 用於透明度
+                this.alpha = 255;
+                this.size = random(5, 15);
+                this.vx = random(-2, 2);
+                this.vy = random(-2, 2);
+
+                if (this.type === 'snow') {
+                    this.color = color(255, this.alpha);
+                    this.size = random(2, 6);
+                    this.vx = random(-0.5, 0.5);
+                    this.vy = random(0.5, 2);
+                } else if (this.type === 'rain') {
+                    this.color = color(150, 200, 255, this.alpha);
+                    this.size = random(1, 3);
+                    this.vx = random(-1, 1);
+                    this.vy = random(5, 10);
+                    this.len = random(10, 20); // 雨滴長度
+                } else if (this.type === 'leaves') {
+                    this.color = color(random(100, 200), random(150, 250), 50, this.alpha);
+                    this.size = random(8, 15);
+                    this.vx = random(-1, 1);
+                    this.vy = random(1, 3);
+                    this.angle = random(TWO_PI);
+                    this.rotationSpeed = random(-0.05, 0.05);
+                } else if (this.type === 'sakura') {
+                    this.color = color(255, 192, 203, this.alpha);
+                    this.size = random(6, 12);
+                    this.vx = random(-1, 1);
+                    this.vy = random(1, 3);
+                    this.angle = random(TWO_PI);
+                    this.rotationSpeed = random(-0.05, 0.05);
+                } else if (this.type === 'fireflies') {
+                    this.color = color(255, 255, 0, this.alpha);
+                    this.size = random(3, 7);
+                    this.vx = random(-0.5, 0.5);
+                    this.vy = random(-0.5, 0.5);
+                    this.glow = random(5, 15); // 發光效果
+                }
+            }
+
+            update(deltaTime) {
+                this.x += this.vx * deltaTime / 16;
+                this.y += this.vy * deltaTime / 16;
+                this.alpha -= 1;
+                this.lifespan -= 1;
+
+                // 循環出現邏輯
+                if (this.type === 'snow' || this.type === 'leaves' || this.type === 'sakura') {
+                    if (this.y > height + this.size) this.y = -this.size;
+                    if (this.x < -this.size) this.x = width + this.size;
+                    if (this.x > width + this.size) this.x = -this.size;
+                } else if (this.type === 'rain') {
+                    if (this.y > height + this.len) this.y = -this.len;
+                } else if (this.type === 'fireflies') {
+                    this.vx += random(-0.1, 0.1);
+                    this.vy += random(-0.1, 0.1);
+                    this.vx = constrain(this.vx, -1, 1);
+                    this.vy = constrain(this.vy, -1, 1);
+                    if (this.lifespan <= 0) { // 螢火蟲重新生成
+                        this.x = random(width);
+                        this.y = random(height);
+                        this.alpha = 255;
+                        this.lifespan = 255;
+                    }
+                }
+
+                if (this.type === 'leaves' || this.type === 'sakura') {
+                    this.angle += this.rotationSpeed * deltaTime / 16;
+                }
+            }
+
+            display() {
+                noStroke();
+                if (this.type === 'fireflies') {
+                    // 使用 drawContext 模擬發光
+                    drawingContext.shadowBlur = this.glow;
+                    drawingContext.shadowColor = this.color;
+                    fill(this.color);
+                    ellipse(this.x, this.y, this.size);
+                    drawingContext.shadowBlur = 0; // 重置陰影，以免影響其他繪圖
+                } else if (this.type === 'rain') {
+                    stroke(this.color);
+                    strokeWeight(this.size);
+                    line(this.x, this.y, this.x + this.vx * 2, this.y + this.len);
+                } else if (this.type === 'leaves' || this.type === 'sakura') {
+                    fill(this.color);
+                    push();
+                    translate(this.x, this.y);
+                    rotate(this.angle);
+                    ellipse(0, 0, this.size * 1.5, this.size); // 橢圓形葉子
+                    pop();
+                } else {
+                    fill(this.color);
+                    ellipse(this.x, this.y, this.size);
+                }
+            }
+
+            isFinished() {
+                return this.alpha <= 0 && this.type !== 'fireflies';
+            }
+        }
+
+        /**
+         * 玩家類別
+         * 繪製為圓形
+         */
+        class Player {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                this.size = 50;
+                this.baseSpeed = 5; // 基礎速度
+                this.speed = this.baseSpeed;
+                this.baseMaxHealth = 100;
+                this.maxHealth = this.baseMaxHealth;
+                this.health = this.maxHealth;
+                this.baseDamage = 10;
+                this.damage = this.baseDamage;
+                this.lastShotTime = 0;
+                this.baseFireRate = 200; // 基礎射擊冷卻時間 (毫秒)
+                this.fireRate = this.baseFireRate;
+                this.dashCooldown = 3000;
+                this.lastDashTime = 0;
+                this.isDashing = false;
+                this.dashDuration = 200;
+                this.dashInvincible = false; // 衝刺無敵
+                this.invincibleDuration = 1000; // 受傷後無敵時間
+                this.lastHitTime = 0;
+            }
+
+            update(deltaTime) {
+                // 更新屬性 (基於技能等級)
+                this.maxHealth = this.baseMaxHealth + healthLevel * 10;
+                this.health = constrain(this.health, 0, this.maxHealth);
+                this.speed = this.baseSpeed + speedLevel * 0.5;
+                this.damage = this.baseDamage + damageLevel * 1;
+                this.fireRate = this.baseFireRate - fireRateLevel * 10;
+                this.fireRate = max(50, this.fireRate); // 射速有下限
+
+                // 生命恢復
+                if (regenLevel > 0 && frameCount % (60 * (6 - regenLevel)) === 0) {
+                    this.health = constrain(this.health + 1, 0, this.maxHealth);
+                    document.getElementById('healthDisplay').innerText = floor(this.health);
+                    document.getElementById('healthBar').style.width = (this.health / this.maxHealth * 100) + '%';
+                }
+
+                // 衝刺邏輯
+                if (this.isDashing) {
+                    if (millis() - this.lastDashTime > this.dashDuration) {
+                        this.isDashing = false;
+                        this.dashInvincible = false; // 衝刺結束，無敵結束
+                    }
+                }
+
+                // 受傷無敵判斷
+                if (this.dashInvincible || (millis() - this.lastHitTime < this.invincibleDuration && this.health > 0)) {
+                    // 閃爍效果
+                    if (frameCount % 10 < 5) {
+                        // noFill(); // 讓玩家半透明
+                    } else {
+                        // fill(255);
+                    }
+                } else {
+                    // fill(255); // 正常狀態
+                }
+
+                if (moveType === 'keyboard') {
+                    let dx = 0;
+                    let dy = 0;
+                    if (keys['w']) dy -= 1;
+                    if (keys['s']) dy += 1;
+                    if (keys['a']) dx -= 1;
+                    if (keys['d']) dx += 1;
+
+                    if (dx !== 0 || dy !== 0) {
+                        let mag = sqrt(dx * dx + dy * dy);
+                        this.x += (dx / mag) * this.speed * (deltaTime / 16);
+                        this.y += (dy / mag) * this.speed * (deltaTime / 16);
+                    }
+                } else { // mouse
+                    this.x = lerp(this.x, mouseX, 0.1);
+                    this.y = lerp(this.y, mouseY, 0.1);
+                }
+
+                this.x = constrain(this.x, this.size / 2, width - this.size / 2);
+                this.y = constrain(this.y, this.size / 2, height - this.size / 2);
+
+                // 射擊
+                if (mouseIsPressed && mouseButton === LEFT && millis() - this.lastShotTime > this.fireRate) {
+                    let angle = atan2(mouseY - this.y, mouseX - this.x);
+                    let bulletDamage = this.damage;
+                    let isCritical = false;
+                    if (critLevel > 0 && random(100) < (critLevel * 5)) { // 5% * level 暴擊率
+                        bulletDamage *= (1.5 + critLevel * 0.1); // 暴擊傷害
+                        isCritical = true;
+                        addGameEvent('暴擊！');
+                    }
+                    bullets.push(new Bullet(this.x, this.y, angle, bulletDamage, isCritical));
+                    this.lastShotTime = millis();
+                }
+            }
+
+            dash() {
+                if (dashLevel > 0 && millis() - this.lastDashTime > this.dashCooldown) {
+                    this.isDashing = true;
+                    this.dashInvincible = true; // 衝刺時無敵
+                    this.lastDashTime = millis();
+                    addGameEvent('衝刺！');
+                }
+            }
+
+            takeDamage(amount) {
+                if (!this.dashInvincible && (millis() - this.lastHitTime > this.invincibleDuration || this.health <= 0)) {
+                    this.health -= amount;
+                    this.lastHitTime = millis();
+                    addGameEvent(`玩家受到 ${amount} 點傷害！`);
+                    if (this.health <= 0) {
+                        this.health = 0;
+                        gameOver();
+                    }
+                }
+                document.getElementById('healthDisplay').innerText = floor(this.health);
+                document.getElementById('healthBar').style.width = (this.health / this.maxHealth * 100) + '%';
+            }
+
+            display() {
+                push();
+                translate(this.x, this.y);
+                if (this.dashInvincible || (millis() - this.lastHitTime < this.invincibleDuration && this.health > 0)) {
+                    // 受傷或衝刺無敵時的閃爍效果
+                    if (frameCount % 10 < 5) {
+                        fill(255, 200, 0, 150); // 半透明黃色
+                    } else {
+                        fill(255, 255, 0); // 實心黃色
+                    }
+                } else {
+                    fill(255, 255, 0); // 正常黃色
+                }
+                noStroke();
+                ellipse(0, 0, this.size); // 繪製玩家為圓形
+
+                // 衝刺冷卻條 (視覺化)
+                if (dashLevel > 0) {
+                    let dashCharge = constrain(map(millis() - this.lastDashTime, 0, this.dashCooldown, 0, 1), 0, 1);
+                    noFill();
+                    stroke(0, 255, 255);
+                    strokeWeight(3);
+                    arc(0, 0, this.size + 10, this.size + 10, -HALF_PI, -HALF_PI + TWO_PI * dashCharge);
+                }
+                pop();
+            }
+        }
+
+        /**
+         * 子彈類別
+         * 繪製為小圓形或方塊
+         */
+        class Bullet {
+            constructor(x, y, angle, damage, isCritical = false) {
+                this.x = x;
+                this.y = y;
+                this.angle = angle;
+                this.speed = 15; // 增加子彈速度
+                this.size = 10;
+                this.damage = damage;
+                this.isCritical = isCritical;
+            }
+
+            update(deltaTime) {
+                this.x += cos(this.angle) * this.speed * (deltaTime / 16);
+                this.y += sin(this.angle) * this.speed * (deltaTime / 16);
+            }
+
+            display() {
+                noStroke();
+                if (this.isCritical) {
+                    fill(255, 200, 0); // 暴擊子彈黃色
+                } else {
+                    fill(0, 200, 255); // 普通子彈藍色
+                }
+                ellipse(this.x, this.y, this.size);
+            }
+
+            isOffscreen() {
+                return this.x < -this.size || this.x > width + this.size || this.y < -this.size || this.y > height + this.size;
+            }
+        }
+
+        /**
+         * 敵人基底類別
+         * 繪製為圓形
+         */
+        class Enemy {
+            constructor(x, y, name, health, speed, damage, value, type = 'normal', color = [255, 0, 0]) {
+                this.x = x;
+                this.y = y;
+                this.size = 40;
+                this.name = name;
+                this.maxHealth = health;
+                this.health = health;
+                this.speed = speed;
+                this.damage = damage; // 對玩家造成的傷害
+                this.value = value; // 擊殺獲得的分數和技能點
+                this.type = type;
+                this.color = color;
+            }
+
+            update(deltaTime) {
+                let angle = atan2(player.y - this.y, player.x - this.x);
+                this.x += cos(angle) * this.speed * (deltaTime / 16);
+                this.y += sin(angle) * this.speed * (deltaTime / 16);
+
+                // 檢查是否與玩家碰撞
+                if (dist(this.x, this.y, player.x, player.y) < (this.size / 2 + player.size / 2 - 10)) {
+                    player.takeDamage(this.damage);
+                    if (this.type === 'suicide') {
+                        return true; // 自爆敵人碰撞後移除
+                    }
+                }
+                return false; // 預設不移除
+            }
+
+            display() {
+                push();
+                translate(this.x, this.y);
+                fill(this.color[0], this.color[1], this.color[2]);
+                noStroke();
+                ellipse(0, 0, this.size); // 繪製敵人為圓形
+
+                // 血條
+                let barWidth = this.size * 0.8;
+                let barHeight = 5;
+                let healthRatio = this.health / this.maxHealth;
+                fill(50);
+                rectMode(CENTER);
+                rect(0, -this.size / 2 - 10, barWidth, barHeight);
+                fill(255, 0, 0);
+                rect(0, -this.size / 2 - 10, barWidth * healthRatio, barHeight);
+
+                // 顯示名稱
+                fill(255);
+                textAlign(CENTER, CENTER);
+                textSize(10);
+                text(this.name, 0, -this.size / 2 - 20);
+                pop();
+            }
+
+            takeDamage(amount) {
+                this.health -= amount;
+                if (this.health <= 0) {
+                    return true; // 死亡
+                }
+                return false;
+            }
+        }
+
+        /**
+         * 特定敵人類型 (範例，使用不同顏色和大小區分)
+         */
+        class FastEnemy extends Enemy {
+            constructor(x, y) {
+                super(x, y, "疾速" + customEnemyName, 50, 8, 15, 2, 'fast', [0, 200, 255]); // 藍色
+                this.size = 35;
+            }
+        }
+
+        class TankEnemy extends Enemy {
+            constructor(x, y) {
+                super(x, y, "鋼鐵" + customEnemyName, 200, 3, 20, 5, 'tank', [100, 100, 100]); // 灰色
+                this.size = 60;
+            }
+        }
+
+        class RangedEnemy extends Enemy {
+            constructor(x, y) {
+                super(x, y, "遠程" + customEnemyName, 80, 2, 10, 3, 'ranged', [255, 100, 0]); // 橙色
+                this.size = 45;
+                this.lastShotTime = 0;
+                this.attackCooldown = 1500;
+                this.attackRange = 300;
+            }
+
+            update(deltaTime) {
+                let distToPlayer = dist(this.x, this.y, player.x, player.y);
+                if (distToPlayer > this.attackRange) {
+                    let angle = atan2(player.y - this.y, player.x - this.x);
+                    this.x += cos(angle) * this.speed * (deltaTime / 16);
+                    this.y += sin(angle) * this.speed * (deltaTime / 16);
+                } else {
+                    if (millis() - this.lastShotTime > this.attackCooldown) {
+                        let angle = atan2(player.y - this.y, player.x - this.x);
+                        enemies.push(new EnemyBullet(this.x, this.y, angle, 5, 20)); // 發射敵人子彈
+                        this.lastShotTime = millis();
+                    }
+                }
+                // 檢查是否與玩家碰撞
+                if (distToPlayer < (this.size / 2 + player.size / 2 - 10)) {
+                    player.takeDamage(this.damage);
+                }
+                return false;
+            }
+        }
+
+        class SuicideEnemy extends Enemy {
+            constructor(x, y) {
+                super(x, y, "自爆" + customEnemyName, 60, 6, 40, 4, 'suicide', [255, 0, 255]); // 紫紅色
+                this.size = 30;
+                this.explosionRadius = 80;
+            }
+            // update 方法由基類處理碰撞後自爆邏輯
+        }
+
+        class EnemyBullet {
+            constructor(x, y, angle, speed, damage) {
+                this.x = x;
+                this.y = y;
+                this.angle = angle;
+                this.speed = speed;
+                this.size = 15;
+                this.damage = damage;
+                this.color = color(255, 0, 0); // 紅色
+            }
+
+            update(deltaTime) {
+                this.x += cos(this.angle) * this.speed * (deltaTime / 16);
+                this.y += sin(this.angle) * this.speed * (deltaTime / 16);
+
+                // 檢查與玩家碰撞
+                if (dist(this.x, this.y, player.x, player.y) < (this.size / 2 + player.size / 2 - 5)) {
+                    player.takeDamage(this.damage);
+                    return true; // 移除子彈
+                }
+                return false;
+            }
+
+            display() {
+                fill(this.color);
+                noStroke();
+                ellipse(this.x, this.y, this.size);
+            }
+
+            isOffscreen() {
+                return this.x < -this.size || this.x > width + this.size || this.y < -this.size || this.y > height + this.size;
+            }
+        }
+
+        /**
+         * Boss 類別 (周佳雯)
+         * 繪製為一個更大的多邊形或特殊形狀
+         */
+        class Boss extends Enemy {
+            constructor(x, y) {
+                super(x, y, "周佳雯", 2000, 1.5, 30, 20, 'boss', [200, 0, 200]); // 紫色Boss
+                this.size = 150;
+                this.attacks = [
+                    { name: "周的言語彈幕", action: this.attackVerbalBarrage, cooldown: 3000 },
+                    { name: "佳的詛咒波", action: this.attackCurseWave, cooldown: 5000 },
+                    { name: "雯的嘲諷風暴", action: this.attackTauntStorm, cooldown: 7000 }
+                ];
+                this.attackIndex = 0;
+                this.lastAttackTime = 0;
+                this.healthStages = [0.75, 0.5, 0.25]; // 血量階段
+                this.currentStage = 0;
+                this.speedMultiplier = 1;
+                this.attackCooldownMultiplier = 1;
+            }
+
+            update(deltaTime) {
+                super.update(deltaTime);
+
+                // Boss階段轉換
+                let healthRatio = this.health / this.maxHealth;
+                if (this.currentStage < this.healthStages.length && healthRatio < this.healthStages[this.currentStage]) {
+                    this.currentStage++;
+                    this.speedMultiplier += 0.2; // 變快
+                    this.attackCooldownMultiplier -= 0.2; // 攻擊更頻繁
+                    this.speed *= (1 + this.speedMultiplier); // 實際加速
+                    addGameEvent(`周佳雯進入階段 ${this.currentStage + 1}！`);
+                }
+
+                // Boss 攻擊邏輯
+                if (millis() - this.lastAttackTime > this.attacks[this.attackIndex].cooldown * this.attackCooldownMultiplier) {
+                    this.attacks[this.attackIndex].action.call(this); // 調用當前攻擊
+                    this.lastAttackTime = millis();
+                    this.attackIndex = (this.attackIndex + 1) % this.attacks.length; // 切換攻擊
+                }
+            }
+
+            display() {
+                push();
+                translate(this.x, this.y);
+                fill(this.color[0], this.color[1], this.color[2]);
+                noStroke();
+                // 繪製 Boss 為一個大鑽石形狀
+                beginShape();
+                vertex(0, -this.size / 2);
+                vertex(this.size / 2, 0);
+                vertex(0, this.size / 2);
+                vertex(-this.size / 2, 0);
+                endShape(CLOSE);
+
+                // Boss 血條
+                let barWidth = this.size * 1.5;
+                let barHeight = 15;
+                let healthRatio = this.health / this.maxHealth;
+                fill(50);
+                rectMode(CENTER);
+                rect(0, -this.size / 2 - 30, barWidth, barHeight);
+                fill(255, 50, 50);
+                rect(0, -this.size / 2 - 30, barWidth * healthRatio, barHeight);
+
+                fill(255);
+                textAlign(CENTER, CENTER);
+                textSize(16);
+                text(`${this.name} (${floor(this.health)}/${this.maxHealth})`, 0, -this.size / 2 - 45);
+                pop();
+            }
+
+            attackVerbalBarrage() {
+                addGameEvent('周佳雯：發動「言語彈幕」！');
+                let numBullets = 10 + this.currentStage * 2;
+                for (let i = 0; i < numBullets; i++) {
+                    let angle = random(TWO_PI); // 全方位射擊
+                    enemies.push(new EnemyBullet(this.x, this.y, angle, 6, 20));
+                }
+            }
+
+            attackCurseWave() {
+                addGameEvent('周佳雯：發動「詛咒波」！');
+                let numMines = 3 + this.currentStage;
+                for (let i = 0; i < numMines; i++) {
+                    let mineX = random(width);
+                    let mineY = random(height);
+                    enemies.push(new Landmine(mineX, mineY));
+                }
+            }
+
+            attackTauntStorm() {
+                addGameEvent('周佳雯：發動「嘲諷風暴」！');
+                player.speed *= 0.5;
+                setTimeout(() => {
+                    player.speed /= 0.5;
+                }, 3000); // 持續3秒
+            }
+        }
+
+        /**
+         * 地雷類別 (特殊的敵人，不能被攻擊，但玩家觸碰會受傷)
+         * 繪製為一個帶十字的圓形
+         */
+        class Landmine extends Enemy {
+            constructor(x, y) {
+                super(x, y, "地雷", 1, 0, 30, 0, 'mine', [100, 100, 100]); // 灰色
+                this.size = 30;
+                this.active = false;
+                this.activationDelay = 1000;
+                this.spawnTime = millis();
+            }
+
+            update(deltaTime) {
+                if (!this.active && millis() - this.spawnTime > this.activationDelay) {
+                    this.active = true;
+                }
+
+                if (this.active) {
+                    if (dist(this.x, this.y, player.x, player.y) < (this.size / 2 + player.size / 2 - 5)) {
+                        player.takeDamage(this.damage);
+                        return true; // 觸發後移除
+                    }
+                }
+                return false;
+            }
+
+            display() {
+                push();
+                translate(this.x, this.y);
+                if (this.active) {
+                    fill(255, 0, 0, 200); // 紅色
+                    if (frameCount % 30 < 15) { // 閃爍效果
+                        fill(255, 100, 0, 255);
+                    }
+                    ellipse(0, 0, this.size);
+                } else {
+                    fill(100, 100, 100, 150); // 灰色
+                    ellipse(0, 0, this.size * 0.8);
+                }
+                stroke(255);
+                strokeWeight(1);
+                line(-5, 0, 5, 0);
+                line(0, -5, 0, 5);
+                noStroke();
+                pop();
+            }
+
+            takeDamage(amount) {
+                return false; // 地雷無法被攻擊
+            }
+        }
+
+        /**
+         * 道具類別
+         * 繪製為不同顏色的方塊
+         */
+        class Pickup {
+            constructor(x, y, type) {
+                this.x = x;
+                this.y = y;
+                this.type = type; // 'health', 'skillPoint'
+                this.size = 25;
+                this.vy = 1; // 緩慢下降
+                this.active = true;
+                this.color = type === 'health' ? color(0, 255, 0) : color(255, 255, 0); // 綠色血包，黃色技能點
+            }
+
+            update(deltaTime) {
+                this.y += this.vy * (deltaTime / 16);
+                if (this.y > height + this.size) {
+                    this.active = false; // 掉出螢幕外移除
+                }
+                // 檢查與玩家碰撞
+                if (this.active && dist(this.x, this.y, player.x, player.y) < (this.size / 2 + player.size / 2 - 10)) {
+                    this.applyEffect();
+                    this.active = false; // 拾取後移除
+                }
+            }
+
+            display() {
+                if (!this.active) return;
+                fill(this.color);
+                noStroke();
+                rectMode(CENTER);
+                rect(this.x, this.y, this.size, this.size); // 繪製為方塊
+            }
+
+            applyEffect() {
+                if (this.type === 'health') {
+                    player.health = constrain(player.health + 20, 0, player.maxHealth);
+                    addGameEvent('獲得生命值！');
+                } else if (this.type === 'skillPoint') {
+                    skillPoints++;
+                    document.getElementById('skillPoints').innerText = skillPoints;
+                    addGameEvent('獲得技能點！');
+                }
+            }
+        }
+
+        /**
+         * 近戰攻擊效果類別
+         * 繪製為扇形或線條
+         */
+        class MeleeEffect {
+            constructor(x, y, angle) {
+                this.x = x;
+                this.y = y;
+                this.angle = angle;
+                this.size = 80; // 效果半徑
+                this.lifespan = 200; // 效果持續時間
+                this.spawnTime = millis();
+            }
+
+            update() {
+                if (millis() - this.spawnTime > this.lifespan) {
+                    return true; // 效果結束，移除
+                }
+                return false;
+            }
+
+            display() {
+                push();
+                translate(this.x, this.y);
+                rotate(this.angle); // 旋轉到攻擊方向
+                noFill();
+                stroke(255, 255, 0, map(millis() - this.spawnTime, 0, this.lifespan, 255, 0)); // 逐漸透明的黃色線條
+                strokeWeight(5);
+                arc(0, 0, this.size * 2, this.size * 2, -QUARTER_PI / 2, QUARTER_PI / 2); // 繪製為扇形弧線
+                pop();
+            }
+        }
+
+        // --- p5.js 基本設定 ---
+
+        function setup() {
+            gameCanvas = createCanvas(800, 600);
+            gameCanvas.parent('gameContainer');
+            // noLoop(); // 遊戲開始前不循環
+            resetGame();
+            loadHighScores(); // 加載高分榜
+            lastUpdateTime = millis();
+        }
+
+        function draw() {
+            let currentTime = millis();
+            let deltaTime = currentTime - lastUpdateTime;
+            lastUpdateTime = currentTime;
+
+            background(0); // 黑色背景，這裡不依賴圖片
+
+            // 繪製背景特效 (如果啟用)
+            if (bgEffectType !== 'none') {
+                drawBackgroundEffect(deltaTime);
+            }
+
+            switch (gameState) {
+                case 'menu':
+                    // 菜單畫面由HTML控制，這裡不需要額外繪製
+                    break;
+                case 'playing':
+                    updatePlaying(deltaTime);
+                    displayPlaying();
+                    break;
+                case 'paused':
+                    // 暫停畫面由HTML控制，這裡不需要額外繪製
+                    break;
+                case 'gameOver':
+                    // 遊戲結束畫面由HTML控制，這裡不需要額外繪製
+                    break;
+            }
+
+            // 更新UI元素
+            updateUI();
+        }
+
+        // --- 遊戲邏輯函數 ---
+
+        function startGame() {
+            playerName = document.getElementById('playerName').value || "玩家1";
+            moveType = document.getElementById('moveType').value;
+            bgEffectType = document.getElementById('bgEffect').value;
+            customEnemyName = document.getElementById('customEnemyName').value || "敵人";
+            difficulty = document.getElementById('difficulty').value;
+
+            document.getElementById('menuScreen').style.display = 'none';
+            document.getElementById('gameUI').style.display = 'block';
+            document.getElementById('gameEvents').style.display = 'block';
+
+            resetGame(); // 確保遊戲數據重置
+            gameState = 'playing';
+            gameStartTime = millis();
+            lastEnemySpawnTime = millis();
+            nextBossTime = bossSpawnTime;
+            loop(); // 確保遊戲循環運行
+        }
+
+        function resetGame() {
+            player = new Player(width / 2, height / 2);
+            bullets = [];
+            enemies = [];
+            meleeEffects = [];
+            pickups = [];
+            score = 0;
+            kills = 0;
+            skillPoints = 0;
+            healthLevel = 0;
+            damageLevel = 0;
+            speedLevel = 0;
+            fireRateLevel = 0;
+            dashLevel = 0;
+            regenLevel = 0;
+            critLevel = 0;
+
+            bossSpawned = false;
+            bossInstance = null;
+            ultimateCharge = 0;
+            particles = []; // 重置粒子
+
+            // 根據難度設定初始值
+            if (difficulty === 'easy') {
+                player.baseMaxHealth = 150;
+                player.baseDamage = 15;
+                player.baseSpeed = 6; // 簡單模式玩家稍微快一點
+                enemySpawnInterval = 2000;
+                bossSpawnTime = 45000;
+            } else if (difficulty === 'normal') {
+                player.baseMaxHealth = 100;
+                player.baseDamage = 10;
+                player.baseSpeed = 5;
+                enemySpawnInterval = 1500;
+                bossSpawnTime = 30000;
+            } else if (difficulty === 'hard') {
+                player.baseMaxHealth = 70;
+                player.baseDamage = 8;
+                player.baseSpeed = 4;
+                enemySpawnInterval = 1000;
+                bossSpawnTime = 20000;
+            }
+            player.maxHealth = player.baseMaxHealth;
+            player.health = player.maxHealth;
+            player.damage = player.baseDamage;
+            player.speed = player.baseSpeed;
+            player.fireRate = player.baseFireRate;
+
+
+            document.getElementById('skillPoints').innerText = skillPoints;
+            document.getElementById('healthLevel').innerText = healthLevel;
+            document.getElementById('damageLevel').innerText = damageLevel;
+            document.getElementById('speedLevel').innerText = speedLevel;
+            document.getElementById('fireRateLevel').innerText = fireRateLevel;
+            document.getElementById('dashLevel').innerText = dashLevel;
+            document.getElementById('regenLevel').innerText = regenLevel;
+            document.getElementById('critLevel').innerText = critLevel;
+
+            document.getElementById('gameEvents').innerHTML = ''; // 清空事件訊息
+            updateSkillButtonStates(); // 更新技能按鈕狀態
+        }
+
+        function updatePlaying(deltaTime) {
+            player.update(deltaTime);
+
+            // 敵人生成
+            if (millis() - lastEnemySpawnTime > enemySpawnInterval) {
+                spawnEnemy();
+                lastEnemySpawnTime = millis();
+                // 隨著時間推移加速敵人生成速度 (有下限)
+                enemySpawnInterval = max(300, enemySpawnInterval - 20);
+            }
+
+            // Boss生成
+            if (!bossSpawned && millis() - gameStartTime > nextBossTime) {
+                bossInstance = new Boss(random(width), random(height * 0.2));
+                enemies.push(bossInstance);
+                bossSpawned = true;
+                addGameEvent('BOSS 周佳雯出現了！');
+            }
+
+            // 更新和移除子彈
+            for (let i = bullets.length - 1; i >= 0; i--) {
+                bullets[i].update(deltaTime);
+                if (bullets[i].isOffscreen()) {
+                    bullets.splice(i, 1);
+                }
+            }
+
+            // 更新和移除敵人及敵人子彈
+            for (let i = enemies.length - 1; i >= 0; i--) {
+                let enemyRemoved = enemies[i].update(deltaTime);
+                if (enemyRemoved) {
+                    if (enemies[i].type === 'suicide') {
+                        // 自爆效果：簡單的粒子爆炸
+                        for(let k=0; k<10; k++) {
+                            particles.push(new Particle(enemies[i].x, enemies[i].y, 'explosion')); // 暫時用explosion類型
+                        }
+                    }
+                    enemies.splice(i, 1);
+                    continue;
+                }
+
+                // 玩家子彈與敵人碰撞
+                for (let j = bullets.length - 1; j >= 0; j--) {
+                    if (dist(bullets[j].x, bullets[j].y, enemies[i].x, enemies[i].y) < (bullets[j].size / 2 + enemies[i].size / 2)) {
+                        let enemyDied = enemies[i].takeDamage(bullets[j].damage);
+                        bullets.splice(j, 1); // 子彈消失
+
+                        if (enemyDied) {
+                            score += enemies[i].value;
+                            kills++;
+                            addGameEvent(`擊殺了 ${enemies[i].name}! +${enemies[i].value}分`);
+                            ultimateCharge = constrain(ultimateCharge + enemies[i].value / 2, 0, ULTIMATE_MAX_CHARGE);
+
+                            // 掉落道具 (簡化為只有血包和技能點)
+                            if (random(100) < 15) {
+                                pickups.push(new Pickup(enemies[i].x, enemies[i].y, 'health'));
+                            }
+                            if (enemies[i].type === 'boss' || random(100) < 5) {
+                                pickups.push(new Pickup(enemies[i].x, enemies[i].y, 'skillPoint'));
+                            }
+
+                            if (enemies[i].type === 'boss') {
+                                addGameEvent('周佳雯被擊敗了！');
+                                bossSpawned = false;
+                                nextBossTime = millis() + 60000; // 1分鐘後再出Boss
+                            }
+                            enemies.splice(i, 1);
+                            break;
+                        }
+                    }
+                }
+            }
+
+            // 更新和移除近戰效果
+            for (let i = meleeEffects.length - 1; i >= 0; i--) {
+                if (meleeEffects[i].update()) {
+                    meleeEffects.splice(i, 1);
+                }
+            }
+
+            // 更新和移除道具
+            for (let i = pickups.length - 1; i >= 0; i--) {
+                pickups[i].update(deltaTime);
+                if (!pickups[i].active) {
+                    pickups.splice(i, 1);
+                }
+            }
+
+            // 更新背景粒子 (如果啟用)
+            if (bgEffectType !== 'none') {
+                for (let i = particles.length - 1; i >= 0; i--) {
+                    particles[i].update(deltaTime);
+                    if (particles[i].isFinished()) {
+                        particles.splice(i, 1);
+                    }
+                }
+                // 補充粒子 (除了螢火蟲，螢火蟲是循環的)
+                if (particles.length < 100 && bgEffectType !== 'fireflies') {
+                    spawnParticle(bgEffectType);
+                }
+            }
+        }
+
+        function displayPlaying() {
+            // 繪製道具
+            for (let p of pickups) {
+                p.display();
+            }
+
+            // 繪製子彈
+            for (let b of bullets) {
+                b.display();
+            }
+
+            // 繪製近戰效果 (在玩家上方)
+            for (let m of meleeEffects) {
+                m.display();
+            }
+
+            // 繪製敵人
+            for (let e of enemies) {
+                e.display();
+            }
+
+            // 繪製玩家
+            player.display();
+        }
+
+        function gameOver() {
+            gameState = 'gameOver';
+            document.getElementById('gameOverScreen').style.display = 'flex';
+            document.getElementById('finalScore').innerText = score;
+            document.getElementById('finalKills').innerText = kills;
+            document.getElementById('gameUI').style.display = 'none';
+            document.getElementById('gameEvents').style.display = 'none';
+            document.getElementById('ultimateButton').disabled = true; // 遊戲結束按鈕失效
+            noLoop(); // 停止p5.js循環
+
+            saveHighScore(playerName, score, kills);
+            displayHighScores();
+        }
+
+        function restartGame() {
+            document.getElementById('gameOverScreen').style.display = 'none';
+            document.getElementById('menuScreen').style.display = 'flex'; // 返回主菜單
+            resetGame();
+        }
+
+        function updateSkillButtonStates() {
+            // 更新技能按鈕的禁用狀態
+            const skillButtons = document.querySelectorAll('#skillScreen .skill-btn');
+            skillButtons.forEach(button => {
+                const skillType = button.onclick.toString().match(/'([^']+)'/)[1]; // 從 onclick 屬性中提取技能類型
+                let cost = 1;
+                let maxLevelReached = false;
+
+                switch (skillType) {
+                    case 'health':
+                        maxLevelReached = (healthLevel >= 10); // 假設最高10級
+                        break;
+                    case 'damage':
+                        maxLevelReached = (damageLevel >= 10);
+                        break;
+                    case 'speed':
+                        maxLevelReached = (speedLevel >= 10);
+                        break;
+                    case 'fireRate':
+                        maxLevelReached = (fireRateLevel >= 10);
+                        break;
+                    case 'dash':
+                        cost = 2;
+                        maxLevelReached = (dashLevel >= 3); // 假設最高3級
+                        break;
+                    case 'regen':
+                        cost = 2;
+                        maxLevelReached = (regenLevel >= 5); // 假設最高5級
+                        break;
+                    case 'crit':
+                        cost = 3;
+                        maxLevelReached = (critLevel >= 5); // 假設最高5級
+                        break;
+                }
+                button.disabled = (skillPoints < cost) || maxLevelReached;
+                button.innerText = `升級 (消耗 ${cost} 點)`;
+                if(maxLevelReached) {
+                    button.innerText = '已達最高級';
+                }
+            });
+        }
+
+
+        function upgradeSkill(type) {
+            let cost = 1;
+            let currentLevel;
+            let addMessage = '';
+            let maxLevel = false;
+
+            switch (type) {
+                case 'health':
+                    cost = 1;
+                    currentLevel = healthLevel;
+                    if (healthLevel >= 10) maxLevel = true;
+                    else { healthLevel++; player.maxHealth = player.baseMaxHealth + healthLevel * 10; player.health = constrain(player.health + 10, 0, player.maxHealth); addMessage = '生命值'; }
+                    document.getElementById('healthLevel').innerText = healthLevel;
+                    break;
+                case 'damage':
+                    cost = 1;
+                    currentLevel = damageLevel;
+                    if (damageLevel >= 10) maxLevel = true;
+                    else { damageLevel++; player.damage = player.baseDamage + damageLevel * 1; addMessage = '傷害'; }
+                    document.getElementById('damageLevel').innerText = damageLevel;
+                    break;
+                case 'speed':
+                    cost = 1;
+                    currentLevel = speedLevel;
+                    if (speedLevel >= 10) maxLevel = true;
+                    else { speedLevel++; player.speed = player.baseSpeed + speedLevel * 0.5; addMessage = '速度'; }
+                    document.getElementById('speedLevel').innerText = speedLevel;
+                    break;
+                case 'fireRate':
+                    cost = 1;
+                    currentLevel = fireRateLevel;
+                    if (fireRateLevel >= 10) maxLevel = true;
+                    else { fireRateLevel++; player.fireRate = player.baseFireRate - fireRateLevel * 10; player.fireRate = max(50, player.fireRate); addMessage = '射速'; }
+                    document.getElementById('fireRateLevel').innerText = fireRateLevel;
+                    break;
+                case 'dash':
+                    cost = 2;
+                    currentLevel = dashLevel;
+                    if (dashLevel >= 3) maxLevel = true;
+                    else { dashLevel++; player.dashCooldown = 3000 - dashLevel * 500; addMessage = '衝刺'; }
+                    document.getElementById('dashLevel').innerText = dashLevel;
+                    break;
+                case 'regen':
+                    cost = 2;
+                    currentLevel = regenLevel;
+                    if (regenLevel >= 5) maxLevel = true;
+                    else { regenLevel++; addMessage = '生命恢復'; }
+                    document.getElementById('regenLevel').innerText = regenLevel;
+                    break;
+                case 'crit':
+                    cost = 3;
+                    currentLevel = critLevel;
+                    if (critLevel >= 5) maxLevel = true;
+                    else { critLevel++; addMessage = '暴擊'; }
+                    document.getElementById('critLevel').innerText = critLevel;
+                    break;
+                default:
+                    addGameEvent('無效的技能類型！');
+                    return;
+            }
+
+            if (maxLevel) {
+                addGameEvent(`${addMessage}已達最高級！`);
+            } else if (skillPoints >= cost) {
+                skillPoints -= cost;
+                document.getElementById('skillPoints').innerText = skillPoints;
+                addGameEvent(`升級${addMessage}！`);
+            } else {
+                addGameEvent('技能點不足！');
+            }
+            updateSkillButtonStates(); // 更新按鈕狀態
+        }
+
+
+        function resumeGame() {
+            gameState = 'playing';
+            document.getElementById('skillScreen').style.display = 'none';
+            loop(); // 恢復p5.js循環
+        }
+
+        // --- UI 更新函數 ---
+        function updateUI() {
+            if (gameState === 'playing') {
+                document.getElementById('playerNameDisplay').innerText = playerName;
+                document.getElementById('scoreDisplay').innerText = score;
+                document.getElementById('killsDisplay').innerText = kills;
+                document.getElementById('timeDisplay').innerText = floor((millis() - gameStartTime) / 1000) + 's';
+                document.getElementById('healthDisplay').innerText = floor(player.health);
+                document.getElementById('maxHealthDisplay').innerText = player.maxHealth;
+                document.getElementById('healthBar').style.width = (player.health / player.maxHealth * 100) + '%';
+                document.getElementById('ultimateBar').style.width = (ultimateCharge / ULTIMATE_MAX_CHARGE * 100) + '%';
+                document.getElementById('ultimateButton').disabled = (ultimateCharge < ULTIMATE_COST);
+            }
+        }
+
+        // --- 遊戲事件訊息 ---
+        function addGameEvent(message) {
+            const eventsDiv = document.getElementById('gameEvents');
+            const eventMessage = document.createElement('div');
+            eventMessage.classList.add('event-message');
+            eventMessage.innerText = `[${floor((millis() - gameStartTime) / 1000)}s] ${message}`;
+            eventsDiv.prepend(eventMessage);
+            if (eventsDiv.children.length > 5) { // 最多顯示5條訊息
+                eventsDiv.removeChild(eventsDiv.lastChild);
+            }
+        }
+
+        // --- 高分榜功能 ---
+        function saveHighScore(name, score, kills) {
+            let currentHighScores = loadHighScoresFromStorage();
+            currentHighScores.push({ name: name, score: score, kills: kills });
+            currentHighScores.sort((a, b) => b.score - a.score);
+            currentHighScores = currentHighScores.slice(0, MAX_HIGH_SCORES);
+            localStorage.setItem('narutoShooterHighScores', JSON.stringify(currentHighScores));
+        }
+
+        function loadHighScoresFromStorage() {
+            const storedScores = localStorage.getItem('narutoShooterHighScores');
+            return storedScores ? JSON.parse(storedScores) : [];
+        }
+
+        function loadHighScores() { // 這個函數在 setup 時調用一次，然後在遊戲結束時調用 displayHighScores
+            highScores = loadHighScoresFromStorage();
+        }
+
+        function displayHighScores() {
+            const highScoreList = document.getElementById('highScoreList');
+            highScoreList.innerHTML = '';
+            if (highScores.length === 0) {
+                highScoreList.innerHTML = '<li>目前沒有高分。</li>';
+                return;
+            }
+            highScores.forEach((entry, index) => {
+                const listItem = document.createElement('li');
+                listItem.innerHTML = `<span>${index + 1}. ${entry.name}</span><span>分數: ${entry.score} (擊殺: ${entry.kills})</span>`;
+                highScoreList.appendChild(listItem);
+            });
+        }
+
+        // --- 敵人生成邏輯 ---
+        function spawnEnemy() {
+            let edge = floor(random(4)); // 0: top, 1: right, 2: bottom, 3: left
+            let x, y;
+            if (edge === 0) {
+                x = random(width);
+                y = -50;
+            } else if (edge === 1) {
+                x = width + 50;
+                y = random(height);
+            } else if (edge === 2) {
+                x = random(width);
+                y = height + 50;
+            } else {
+                x = -50;
+                y = random(height);
+            }
+
+            let enemyTypeRoll = random(100);
+            let newEnemy;
+
+            if (enemyTypeRoll < 55) { // 55% 普通敵人
+                newEnemy = new Enemy(x, y, customEnemyName, 80, 4, 10, 1, 'normal', [255, 0, 0]);
+            } else if (enemyTypeRoll < 70) { // 15% 快速敵人
+                newEnemy = new FastEnemy(x, y);
+            } else if (enemyTypeRoll < 80) { // 10% 坦克敵人
+                newEnemy = new TankEnemy(x, y);
+            } else if (enemyTypeRoll < 90) { // 10% 遠程敵人
+                newEnemy = new RangedEnemy(x, y);
+            } else { // 10% 自爆敵人
+                newEnemy = new SuicideEnemy(x, y);
+            }
+            enemies.push(newEnemy);
+        }
+
+        // --- 背景特效生成與繪製 ---
+        function drawBackgroundEffect(deltaTime) {
+            // 粒子繪製邏輯已在 Particle 類別中
+            // 這裡只需確保粒子數量並更新/顯示它們
+            if (bgEffectType === 'snow') {
+                while (particles.length < 100) spawnParticle('snow');
+            } else if (bgEffectType === 'rain') {
+                while (particles.length < 150) spawnParticle('rain');
+            } else if (bgEffectType === 'leaves') {
+                while (particles.length < 80) spawnParticle('leaves');
+            } else if (bgEffectType === 'sakura') {
+                while (particles.length < 120) spawnParticle('sakura');
+            } else if (bgEffectType === 'fireflies') {
+                while (particles.length < 50) spawnParticle('fireflies');
+            } else if (bgEffectType === 'explosion') { // 臨時用於爆炸效果
+                // 爆炸粒子會在被創建後自行消失
+            }
+
+            for (let p of particles) {
+                p.display();
+            }
+        }
+
+        function spawnParticle(type, x = random(width), y = random(-50, -20)) {
+            // 預設從上方隨機生成，如果是螢火蟲則隨機整個畫面
+            if (type === 'fireflies') {
+                x = random(width);
+                y = random(height);
+            }
+            particles.push(new Particle(x, y, type));
+        }
+
+        // --- 事件監聽 ---
+        function mousePressed() {
+            if (gameState === 'playing') {
+                if (mouseButton === RIGHT && millis() - lastMeleeTime > meleeCooldown) {
+                    meleeAttack();
+                    lastMeleeTime = millis();
+                }
+            }
+        }
+
+        function keyPressed() {
+            if (gameState === 'playing' || gameState === 'paused') {
+                keys[key.toLowerCase()] = true; // 記錄按鍵按下狀態
+
+                if (key === ' ' && gameState === 'playing') {
+                    gameState = 'paused';
+                    document.getElementById('skillScreen').style.display = 'flex';
+                    noLoop(); // 暫停p5.js循環
+                    addGameEvent('遊戲暫停，進入技能樹。');
+                    updateSkillButtonStates(); // 進入技能樹時更新按鈕狀態
+                } else if (key.toLowerCase() === 'r' && gameState === 'playing' && ultimateCharge >= ULTIMATE_COST) {
+                    // 放大招
+                    useUltimate();
+                    ultimateCharge = 0; // 大招使用後歸零
+                } else if (key.toLowerCase() === 'shift' && gameState === 'playing') {
+                    player.dash();
+                }
+            }
+        }
+
+        function keyReleased() {
+            if (gameState === 'playing' || gameState === 'paused') {
+                keys[key.toLowerCase()] = false; // 記錄按鍵釋放狀態
+            }
+        }
+
+        function meleeAttack() {
+            addGameEvent('發動近戰攻擊！');
+            let angle = atan2(mouseY - player.y, mouseX - player.x);
+            meleeEffects.push(new MeleeEffect(player.x, player.y, angle));
+
+            // 檢查近戰範圍內的敵人 (簡單圓形範圍)
+            for (let i = enemies.length - 1; i >= 0; i--) {
+                let enemy = enemies[i];
+                let distToEnemy = dist(player.x, player.y, enemy.x, enemy.y);
+                if (distToEnemy < player.size / 2 + meleeEffects[0].size / 2) { // 玩家半徑 + 效果半徑
+                    let enemyDied = enemy.takeDamage(player.damage * 1.5); // 近戰傷害高一點
+                    if (enemyDied) {
+                        score += enemy.value;
+                        kills++;
+                        ultimateCharge = constrain(ultimateCharge + enemy.value / 2, 0, ULTIMATE_MAX_CHARGE);
+                        if (random(100) < 15) { pickups.push(new Pickup(enemy.x, enemy.y, 'health')); }
+                        if (enemy.type === 'boss' || random(100) < 5) { pickups.push(new Pickup(enemy.x, enemy.y, 'skillPoint')); }
+
+                        addGameEvent(`近戰擊殺了 ${enemy.name}!`);
+                        if (enemy.type === 'boss') {
+                            addGameEvent('周佳雯被擊敗了！');
+                            bossSpawned = false;
+                            nextBossTime = millis() + 60000;
+                        }
+                        enemies.splice(i, 1);
+                    }
+                }
+            }
+        }
+
+        function useUltimate() {
+            if (ultimateCharge < ULTIMATE_COST) {
+                addGameEvent('大招能量不足！');
+                return;
+            }
+            addGameEvent('發動大招「大爆炸」！所有敵人被清除！');
+            ultimateCharge = 0; // 重置能量
+
+            // 清除所有敵人並給予分數/技能點
+            for (let i = enemies.length - 1; i >= 0; i--) {
+                let enemy = enemies[i];
+                score += enemy.value;
+                kills++;
+                // 大招清除的敵人不掉落普通道具，只掉落技能點
+                if (enemy.type === 'boss' || random(100) < 5) { // Boss必掉，普通敵人有機會
+                    pickups.push(new Pickup(enemy.x, enemy.y, 'skillPoint'));
+                }
+                // 清除後生成簡單的爆炸粒子
+                for(let k=0; k<20; k++) {
+                    particles.push(new Particle(enemy.x, enemy.y, 'explosion'));
+                }
+                enemies.splice(i, 1);
+            }
+            // 移除所有敵人子彈和地雷
+            enemies = enemies.filter(e => e.type !== 'mine' && !(e instanceof EnemyBullet));
+            bullets = []; // 清除所有玩家子彈 (視覺效果)
+        }
+    </script>
+</body>
+</html>
