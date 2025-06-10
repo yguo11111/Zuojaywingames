@@ -1,12 +1,12 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chat Application</title>
+    <title>多人聊天室</title>
     <style>
         body {
-            font-family: Arial, sans-serif;
+            font-family: "Arial", sans-serif;
             background-color: #f0f8ff;
             color: #333;
             display: flex;
@@ -44,7 +44,6 @@
             padding: 10px;
             overflow-y: auto;
             border-top: 1px solid #4CAF50;
-            border-bottom: 1px solid #4CAF50;
             height: 300px;
         }
         .message {
@@ -74,7 +73,7 @@
             border-radius: 5px;
             margin-right: 10px;
         }
-        .send-button {
+        .send-button, .upload-button {
             padding: 10px;
             background-color: #4CAF50;
             color: white;
@@ -83,7 +82,7 @@
             cursor: pointer;
             transition: background-color 0.3s;
         }
-        .send-button:hover {
+        .send-button:hover, .upload-button:hover {
             background-color: #45a049;
         }
         .user-count {
@@ -113,15 +112,16 @@
 </head>
 <body>
     <header>
-        <h1 id="greeting">Welcome to the Chat!</h1>
+        <h1 id="greeting">欢迎进入聊天室!</h1>
     </header>
     <div class="container">
-        <input type="text" id="userName" class="user-input" placeholder="Enter your name" />
-        <div class="user-count" id="userCount">Users in chat: 0</div>
+        <input type="text" id="userName" class="user-input" placeholder="输入你的名字" />
+        <div class="user-count" id="userCount">在线用户：0</div>
         <div class="chat-area" id="chatArea"></div>
         <div class="input-area">
-            <input type="text" id="messageInput" class="message-input" placeholder="Type your message..." />
-            <button class="send-button" id="sendButton">Send</button>
+            <input type="text" id="messageInput" class="message-input" placeholder="输入你的消息..." />
+            <input type="file" id="imageInput" accept="image/*" class="upload-button" />
+            <button class="send-button" id="sendButton">发送</button>
         </div>
     </div>
     <script>
@@ -129,6 +129,7 @@
         const chatArea = document.getElementById('chatArea');
         const messageInput = document.getElementById('messageInput');
         const sendButton = document.getElementById('sendButton');
+        const imageInput = document.getElementById('imageInput');
         const userCountDisplay = document.getElementById('userCount');
         const greeting = document.getElementById('greeting');
 
@@ -138,8 +139,8 @@
             const name = userNameInput.value.trim();
             if (name) {
                 users.add(name);
-                userCountDisplay.innerText = `Users in chat: ${users.size}`;
-                greeting.innerText = `Welcome to the Chat, ${name}!`;
+                userCountDisplay.innerText = `在线用户：${users.size}`;
+                greeting.innerText = `欢迎进入聊天室, ${name}!`;
             }
         });
 
@@ -156,17 +157,26 @@
             }
         });
 
-        // Simulate other users for demonstration
-        setInterval(() => {
-            if (users.size > 0) {
-                const randomUser = Array.from(users)[Math.floor(Math.random() * users.size)];
-                const messageElement = document.createElement('div');
-                messageElement.classList.add('message', 'message-other');
-                messageElement.textContent = `${randomUser}: This is a simulated message!`;
-                chatArea.appendChild(messageElement);
-                chatArea.scrollTop = chatArea.scrollHeight;
+        imageInput.addEventListener('change', (event) => {
+            const file = event.target.files[0];
+            const userName = userNameInput.value.trim();
+            if (file && userName) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const messageElement = document.createElement('div');
+                    messageElement.classList.add('message', 'message-user');
+                    const img = document.createElement('img');
+                    img.src = e.target.result;
+                    img.style.maxWidth = '100%';
+                    img.style.borderRadius = '10px';
+                    messageElement.appendChild(img);
+                    chatArea.appendChild(messageElement);
+                    chatArea.scrollTop = chatArea.scrollHeight;
+                }
+                reader.readAsDataURL(file);
+                imageInput.value = ''; // Clear the input after uploading
             }
-        }, 3000);
+        });
     </script>
 </body>
 </html>
